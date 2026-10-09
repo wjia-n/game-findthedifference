@@ -20,7 +20,6 @@ class SpotAudio {
   static const int _rate = 22050;
   final AudioPlayer _sfx = AudioPlayer();
   final AudioPlayer _music = AudioPlayer();
-  final _rand = Random();
 
   bool musicOn = true;
   bool sfxOn = true;
