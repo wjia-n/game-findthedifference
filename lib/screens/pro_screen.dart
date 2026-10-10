@@ -28,7 +28,6 @@ class _ProScreenState extends State<ProScreen> {
 
   Future<void> _initStore() async {
     await _store.init();
-    _store.proPurchased.addListener(_onPro);
     if (_store.proPurchased.value) _applyPro();
     if (mounted) setState(() => _loading = false);
   }
@@ -41,7 +40,6 @@ class _ProScreenState extends State<ProScreen> {
 
   @override
   void dispose() {
-    _store.proPurchased.removeListener(_onPro);
     _store.dispose();
     super.dispose();
   }
