@@ -33,10 +33,7 @@ class _ProScreenState extends State<ProScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  void _onPro() {
-    if (_store.proPurchased.value) _applyPro();
-  }
-
+  
   Future<void> _applyPro() async {
     await widget.settings.setPro(true);
     if (mounted) setState(() {});
