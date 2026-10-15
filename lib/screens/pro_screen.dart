@@ -132,17 +132,6 @@ class _ProScreenState extends State<ProScreen> {
                     ],
                   ))
             else ...[
-              if (!isPro && _store.proProduct != null)
-                _buyCard(
-                  theme,
-                  title: 'Unlock PRO forever',
-                  subtitle: 'One-time purchase. Yours on every device.',
-                  price: _store.proProduct!.price,
-                  onBuy: () {
-                    widget.audio.click();
-                    _store.buyPro();
-                  },
-                ),
               if (isPro)
                 _card(theme,
                     child: Row(

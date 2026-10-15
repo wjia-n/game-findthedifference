@@ -17,6 +17,9 @@ import 'package:audioplayers/audioplayers.dart';
 ///   resumes exactly where it left off instead of restarting or dying.
 /// - Every public method catches player errors; audio can never crash the app.
 class SpotAudio {
+  /// Per-game pitch character (findthedifference): 1.28x. Makes SFX unique.
+  static const double _pitchMul = 1.280;
+
   static const int _rate = 22050;
   final AudioPlayer _sfx = AudioPlayer();
   final AudioPlayer _music = AudioPlayer();
@@ -102,6 +105,8 @@ class SpotAudio {
 
   List<double> _tone(double freq, double secs,
       {double freqEnd = 0, double attack = 0.02, double harmonics = 0.25}) {
+    freq *= _pitchMul;
+    freqEnd *= _pitchMul;
     final n = (_rate * secs).round();
     final out = List<double>.filled(n, 0);
     for (int i = 0; i < n; i++) {
@@ -179,50 +184,66 @@ class SpotAudio {
     return out;
   }
 
+  /// Soft synth pad from a chord (shared helper).
+  List<double> _padChord(List<double> freqs, double secs) {
+    final n = (_rate * secs).round();
+    final out = List<double>.filled(n, 0);
+    for (int i = 0; i < n; i++) {
+      final t = i / _rate;
+      final env = (1 - exp(-t * 3)) * exp(-t * 0.4);
+      double s = 0;
+      for (final f in freqs) {
+        s += sin(2 * pi * f * t) + 0.35 * sin(2 * pi * f * 2 * t);
+      }
+      out[i] = s / freqs.length * env * 0.45;
+    }
+    return out;
+  }
+
   Uint8List _clip(String key, List<double> Function() build) {
     return _cache.putIfAbsent(key, () => _wav(build()));
   }
 
   // -------------------------------------------------------------- music
   Uint8List _menuBytes() => _clip('music_menu', () {
-        // Gentle curiosity: slow marimba-like arpeggio, C major-ish.
-        final notes = <double>[
-          261.63, 329.63, 392.0, 523.25, 392.0, 329.63, 293.66, 329.63
-        ];
-        final noteN = (_rate * 0.42).round();
-        final total = noteN * notes.length;
-        final out = List<double>.filled(total, 0.0);
-        for (int k = 0; k < notes.length; k++) {
-          final tone = _tone(notes[k], 0.42, harmonics: 0.35);
-          for (int i = 0; i < noteN && k * noteN + i < total; i++) {
-            out[k * noteN + i] += tone[i] * 0.42;
-          }
+        // A# arpeggiated 0 – 4 – 5 – 3, 16s loop. Unique to findthedifference.
+        final notes = [233.08, 293.66, 349.23, 293.66, 349.23, 440.00, 523.25, 440.00, 391.99, 466.16, 587.32, 466.16, 311.12, 391.99, 466.16, 391.99];
+        final out = <double>[];
+        final noteLen = 16.0 / notes.length;
+        for (final n in notes) {
+          out.addAll(_tone(n, noteLen * 0.9, harmonics: 0.3));
+          final gap = List<double>.filled((_rate * noteLen * 0.1).round(), 0);
+          out.addAll(gap);
         }
-        // Soft low pad underneath.
-        final pad = _tone(130.81, notes.length * 0.42,
-            attack: 0.4, harmonics: 0.15);
-        for (int i = 0; i < total && i < pad.length; i++) {
-          out[i] += pad[i] * 0.18;
+        // Soft pad underneath
+        final pad = _padChord([233.08, 293.66, 349.23], 16.0);
+        for (int i = 0; i < out.length && i < pad.length; i++) {
+          out[i] += pad[i] * 0.3;
         }
         return out;
       });
 
+
   Uint8List _gameBytes() => _clip('music_game', () {
-        // Focused detective loop: steady pizzicato-ish plucks, minor feel.
-        final notes = <double>[
-          220.0, 261.63, 293.66, 261.63, 220.0, 196.0, 220.0, 246.94
-        ];
-        final noteN = (_rate * 0.32).round();
-        final total = noteN * notes.length;
-        final out = List<double>.filled(total, 0.0);
-        for (int k = 0; k < notes.length; k++) {
-          final tone = _tone(notes[k], 0.32, harmonics: 0.3);
-          for (int i = 0; i < noteN && k * noteN + i < total; i++) {
-            out[k * noteN + i] += tone[i] * 0.36;
+        // A# bass + melody 0 – 4 – 5 – 3, 16s loop. Unique to findthedifference.
+        final bassNotes = [116.54, 174.62, 196.00, 155.56];
+        final melNotes = [698.46, 1046.50, 1174.64, 932.32];
+        final out = List<double>.filled((_rate * 16).round(), 0);
+        final segLen = (_rate * 4).round();
+        for (int s = 0; s < 4; s++) {
+          final bass = _tone(bassNotes[s], 3.5, harmonics: 0.4);
+          final mel = _tone(melNotes[s], 1.2, harmonics: 0.25);
+          for (int i = 0; i < bass.length && s * segLen + i < out.length; i++) {
+            out[s * segLen + i] += bass[i] * 0.5;
+          }
+          final melStart = s * segLen + segLen ~/ 4;
+          for (int i = 0; i < mel.length && melStart + i < out.length; i++) {
+            out[melStart + i] += mel[i] * 0.35;
           }
         }
         return out;
       });
+
 
   Future<void> _play(Uint8List bytes) async {
     if (_disposed || !sfxOn) return;
