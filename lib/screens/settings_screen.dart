@@ -5,6 +5,7 @@ import '../theme/spot_themes.dart';
 import 'custom_theme_screen.dart';
 import 'name_field.dart';
 import 'pro_screen.dart';
+import '../transfer/transfer_ui.dart';
 
 /// Settings: audio, renameable profiles, theme + frame pickers.
 class SettingsScreen extends StatelessWidget {
@@ -45,6 +46,7 @@ class SettingsScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(18),
             children: [
+              TransferSaveTile(gameSlug: 'findthedifference'),
               _section(theme, '🔊 Sound & music', [
                 SwitchListTile(
                   title: Text('Music', style: TextStyle(color: theme.text)),
